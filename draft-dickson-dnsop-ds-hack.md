@@ -1,12 +1,12 @@
 ---
-title: TODO - Your title
-abbrev: TODO - Abbreviation
-docname: draft-todo-your-name-here
+title: DS Algorithms for Securing NS and Glue
+abbrev: DANG
+docname: draft-dickson-dnsop-ds-hack
 category: info
 
 ipr: trust200902
-area: General
-workgroup: TODO Working Group
+area: Operations
+workgroup: DNSOP Working Group
 keyword: Internet-Draft
 
 stand_alone: yes
@@ -14,10 +14,10 @@ pi: [toc, sortrefs, symrefs]
 
 author:
  -
-    ins: T. Todo
-    name: Todo Fullname
-    organization: TODO Organization
-    email: todo@example.com
+    ins: B Dickson
+    name: Brian Dickson	
+    organization: GoDaddy
+    email: brian.peter.dickson@gmail.com
 
 normative:
   RFC2119:
@@ -28,14 +28,23 @@ informative:
 
 --- abstract
 
-This is an example of using markdown in the creation of an Internet Draft. The
-specific flavor of markdown being used is kramdown-rfc.
+This Internet Draft proposes a mechanism to encode relevant data for NS records (and optionally A and AAAA records) on the parental side of a zone cut, by encoding them in new DS algorithms.
+
+Since DS records are signed by the parent, this creates a method for validation of the otherwise unsigned delegation and glue records.
+
+The result is the protection of unsigned delegations, which is beneficial if the name servers themselves are named out of a DNSSEC signed zone.
 
 --- middle
 
 # Introduction
 
-TODO Introduction
+There are new privacy goals and DNS server capability discovery goals, which cannot be met without the ability to validate the name of the name servers for a given domain at the delegation point.
+
+Specifically, a query for NS records over an unprotected transport path returns results which do not have protection from tampering by an active on-path attacker, or against successful cache poisoning attackes.
+
+This is true regardless of the DNSSEC status of the domain containing the authoritative information for the name servers for the queried domain.
+
+For example, querying for the NS records for "example.com", at the name servers for the "com" TLD, where the published com zone has "example.com NS ns1.example.net", is not protected against MITM attacks, even if the domain "example.net" (the domain serving records for "ns1.example.net") is DNSSEC signed.
 
 More infomation can be found in {{?I-D.nottingham-for-the-users}}. (An exmple
 of an informative reference to a draft in the middle of text. Note that 
@@ -51,7 +60,11 @@ when, and only when, they appear in all capitals, as shown here.
 
 # Background
 
-This is some background text.
+The methods developed for adding security to the Domain Name System, collectively refered to as DNSSEC, had as a primary requirement that they be backward compatible. The original specifications for DNS used the same RRTYPE on both the parent and child side of a zone cut (the NS record). The main goal of DNSSEC was to ensure data integrity by using cryptographic signatures. However, owing to this overlap in the NS record type, where the records above and below the zone cut have the same owner name, created an inherent conflict, as only one of the two publishers/servers of this data is truly authoritative.
+
+The result is that the parental side of the zone cut has records needed for DNS resolution, which are not signed, and not validatable.
+
+This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones, regardless of where the transition from secure to insecure occurs.
 
 # Use Cases {#usecases}
 
