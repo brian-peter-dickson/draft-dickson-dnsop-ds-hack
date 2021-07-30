@@ -66,7 +66,11 @@ The result is that the parental side of the zone cut has records needed for DNS 
 
 This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones, regardless of where the transition from secure to insecure occurs.
 
-# Use Cases {#usecases}
+# New DNSKEY Algorithms {#algorithms}
+
+These new DNSKEY algorithms conform to the structure requirements from {{!RFC4034}}, but are not themselves used as actual DNSKEY algorithms. They are assigned values from the DNSKEY algorithm table. No DNSKEY records are published with these algorithms.
+
+They are used only as the input to the corresponding DS hashes published in the parent zone.
 
 This section will include some use cases for our new protocol.  The use cases conform
 to the guidelines found in {{!RFC7258}}. (Demonstrating a normative 
@@ -77,23 +81,44 @@ cross reference later in the document, as is done in {{security-considerations}}
 of this document.  (Demonstrating using a reference to a heading without writing an
 actual anchor, but rather using the heading name in lowercase and with dashes.)
 
-## First use case
+## Algorithm {TBD1}
 
-Some text about the first use case. (and an example of using a second level heading.)
+This algorithm is used to validate the NS records of the delegation for the owner name.
+
+The NS records are canonicalized and sorted according to the DNSSEC signing process {{RFC4034}}, including removing any label compression, and normalizing the character cases. The RDATA fields of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
+
+### Example
+
+FIXME
 
 HTTP version 2 is defined in {{?HTTP2=RFC7540}}. (Demonstrating renaming a reference so
 that it is "HTTP2" instead of "RFC7540". You need to do this the first time you use a
 reference. From here on in the document you can just use "HTTP2" in a reference.)
 
-## Second use case
+## Algorithm {TBD2}
 
-This example includes a list:
+This algorithm is used to validate the glue A records required as glue for the delegation NS set associated with the owner name.
 
-- first item
-- second item
-- third item, with a reference to {{?HTTP2}}.
+The glue A records are canonicalized and sorted according to the DNSSEC signing process {{RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
 
-And text below the list.
+### Example
+
+## Algorithm {TBD3}
+
+This algorithm is used to validate the glue AAAA records required as glue for the delegation NS set associated with the owner name.
+
+The glue AAAA records are canonicalized and sorted according to the DNSSEC signing process {{RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
+
+### Example
+
+# Validation Using These DS Records
+
+These new DS records are used to validate corresponding delegation records and glue, as follows:
+- NS records are validated using {TBD1}
+- Glue A records (if present) are validated using {TBD2}
+- Glue AAAA records (if present) are validated using {TBD3}
+
+The same method used for constructing the DS records, is used to validate their contents. The algorithm is replicated with the corresponding inputs, and the hash compared to the published DS record(s).
 
 # Security Considerations
 
@@ -113,3 +138,5 @@ This document has no IANA actions.
 
 Thanks to everyone who helped create the tools that let us use Markdown to create 
 Internet Drafts.
+
+Thanks to Dan York for his Tutorial on using Markdown for writing IETF drafts.
