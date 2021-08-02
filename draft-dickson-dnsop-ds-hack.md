@@ -32,7 +32,7 @@ This Internet Draft proposes a mechanism to encode relevant data for NS records 
 
 Since DS records are signed by the parent, this creates a method for validation of the otherwise unsigned delegation and glue records.
 
-The result is the protection of unsigned delegations, which is beneficial if the name servers themselves are named out of a DNSSEC signed zone.
+This is beneficial if the name server _names_ are in a DNSSEC signed zone.
 
 --- middle
 
@@ -60,11 +60,11 @@ when, and only when, they appear in all capitals, as shown here.
 
 # Background
 
-The methods developed for adding security to the Domain Name System, collectively refered to as DNSSEC, had as a primary requirement that they be backward compatible. The original specifications for DNS used the same RRTYPE on both the parent and child side of a zone cut (the NS record). The main goal of DNSSEC was to ensure data integrity by using cryptographic signatures. However, owing to this overlap in the NS record type, where the records above and below the zone cut have the same owner name, created an inherent conflict, as only one of the two publishers/servers of this data is truly authoritative.
+The methods developed for adding security to the Domain Name System, collectively refered to as DNSSEC, had as a primary requirement that they be backward compatible. The original specifications for DNS used the same Resourc Record Type (RRTYPE) on both the parent and child side of a zone cut (the NS record). The main goal of DNSSEC was to ensure data integrity by using cryptographic signatures. However, owing to this overlap in the NS record type  where the records above and below the zone cut have the same owner name  created an inherent conflict, as only the child zone is authoritative for these records.
 
-The result is that the parental side of the zone cut has records needed for DNS resolution, which are not signed, and not validatable.
+The result is that the parental side of the zone cut has records needed for DNS resolution  which are not signed  and not validatable.
 
-This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones, regardless of where the transition from secure to insecure occurs.
+This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones  regardless of where the transition from secure to insecure occurs.
 
 # New DNSKEY Algorithms {#algorithms}
 
@@ -72,34 +72,36 @@ These new DNSKEY algorithms conform to the structure requirements from {{!RFC403
 
 They are used only as the input to the corresponding DS hashes published in the parent zone.
 
-This section will include some use cases for our new protocol.  The use cases conform
-to the guidelines found in {{!RFC7258}}. (Demonstrating a normative 
-reference inline.)
-
-Note that the section heading also includes an anchor name that can be referenced in a 
-cross reference later in the document, as is done in {{security-considerations}} 
-of this document.  (Demonstrating using a reference to a heading without writing an
-actual anchor, but rather using the heading name in lowercase and with dashes.)
-
 ## Algorithm {TBD1}
 
 This algorithm is used to validate the NS records of the delegation for the owner name.
 
-The NS records are canonicalized and sorted according to the DNSSEC signing process {{RFC4034}}, including removing any label compression, and normalizing the character cases. The RDATA fields of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
+The NS records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}} section 6, including removing any label compression, and normalizing the character cases to lower case. The RDATA fields of the records are concatenated, and the result is hashed using the selected digest algorithm(s), e.g. SHA2-256 for DS digest algorithm 1.
 
 ### Example
 
-FIXME
+Consider the delegation in the COM zone:
+example.com NS ns1.example.net
+example.com NS ns2.example.net
 
-HTTP version 2 is defined in {{?HTTP2=RFC7540}}. (Demonstrating renaming a reference so
-that it is "HTTP2" instead of "RFC7540". You need to do this the first time you use a
-reference. From here on in the document you can just use "HTTP2" in a reference.)
+These two records have RDATA, which after canonicalization and sorting, would be
+ns1.example.net
+ns2.example.net
+
+The input to the digest is the concatenation of those values, i.e. "ns1.example.netns2.example.net".
+
+The Key Tag is calculated per {{!RFC4034}} using this value as the RDATA.
+
+The resulting DS record is
+; example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
+example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
+
 
 ## Algorithm {TBD2}
 
 This algorithm is used to validate the glue A records required as glue for the delegation NS set associated with the owner name.
 
-The glue A records are canonicalized and sorted according to the DNSSEC signing process {{RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
+The glue A records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
 
 ### Example
 
@@ -107,7 +109,7 @@ The glue A records are canonicalized and sorted according to the DNSSEC signing 
 
 This algorithm is used to validate the glue AAAA records required as glue for the delegation NS set associated with the owner name.
 
-The glue AAAA records are canonicalized and sorted according to the DNSSEC signing process {{RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
+The glue AAAA records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
 
 ### Example
 
