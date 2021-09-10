@@ -1,7 +1,7 @@
 ---
 title: DS Algorithms for Securing NS and Glue
 abbrev: DS Algorithms for Securing NS and Glue
-docname: draft-dickson-dnsop-ds-hack
+docname: draft-dickson-dnsop-ds-hack-00
 category: info
 
 ipr: trust200902
@@ -86,13 +86,31 @@ These two records have RDATA, which after canonicalization and sorting, would be
 ns1.example.net
 ns2.example.net
 
-The input to the digest is the concatenation of those values, i.e. "ns1.example.netns2.example.net".
+The input to the digest is the concatenation of those values in wire format.
+For example, if the NS set's RDATA are "ns1.example.net" and "ns2.example.net",
+the wire format would be
+
+    0x03
+    ns1
+    0x07
+    example
+    0x03
+    net
+    0x00
+    0x03
+    ns2
+    0x07
+    example
+    0x03
+    net
+    0x00
 
 The Key Tag is calculated per {{!RFC4034}} using this value as the RDATA.
 
 The resulting DS record is
-; example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
-example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
+
+    example.com DS KeyTag=0 Algorithm={TBD1} DigestType=2 \
+    Digest=sha2-256()
 
 
 ## Algorithm {TBD2}
@@ -103,6 +121,30 @@ The glue A records are canonicalized and sorted according to the DNSSEC signing 
 
 ### Example
 
+For example, if the original "glue" (unsigned) A records are:
+
+    ns1.example.net IN 3600 A standard-example-ip-1
+    ns2.example.net IN 3600 A standard-example-ip-2
+
+There would be one DS record for each of the glue "A" records, with the canonicalized
+wire format of the entire record provided as input to the hash function.
+
+    FIXME replace 0xfffffffx with real example IP addresses
+    (per IANA table of example IPs)
+    First A record's DS record:
+    wire_format(ns1.example.net) 0x01 0x01 3600 0xfffffff0
+    Second A record's DS record:
+    wire_format(ns2.example.net) 0x01 0x01 3600 0xfffffff1
+
+Then the resulting DS record is
+
+    FIXME - who is the right owner to use here?
+    (The glue owner name, or the zone owner name (bailiwick only)?)
+    example.net DS KeyTag=0 Algorithm={TBD2} DigestType=2 \
+    Digest=sha2-256()
+    example.net DS KeyTag=0 Algorithm={TBD2} DigestType=2 \
+    Digest=sha2-256()
+
 ## Algorithm {TBD3}
 
 This algorithm is used to validate the glue AAAA records required as glue for the delegation NS set associated with the owner name.
@@ -110,6 +152,30 @@ This algorithm is used to validate the glue AAAA records required as glue for th
 The glue AAAA records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
 
 ### Example
+
+For example, if the original "glue" (unsigned) AAAA records are:
+
+    ns1.example.net IN 3600 AAAA standard-example-ip6-1
+    ns2.example.net IN 3600 AAAA standard-example-ip6-2
+
+There would be one DS record for each of the glue "A" records, with the canonicalized
+wire format of the entire record provided as input to the hash function.
+
+    FIXME replace 0xfffffffx with real example IP addresses
+    (per IANA table of example IPs)
+    First A record's DS record:
+    wire_format(ns1.example.net) 0x01 0xXX 3600 0x32-hex-digits
+    Second A record's DS record:
+    wire_format(ns2.example.net) 0x01 0xXX 3600 0x32-hex-digits
+
+Then the resulting DS record is
+
+    FIXME - who is the right owner to use here?
+    (The glue owner name, or the zone owner name (bailiwick only)?)
+    example.net DS KeyTag=0 Algorithm={TBD2} DigestType=2 \
+    Digest=sha2-256()
+    example.net DS KeyTag=0 Algorithm={TBD2} DigestType=2 \
+    Digest=sha2-256()
 
 # Validation Using These DS Records
 
@@ -122,14 +188,13 @@ The same method used for constructing the DS records, is used to validate their 
 
 # Security Considerations
 
-As outlined earlier in {{usecases}}, there could be security issues in various use
+As outlined above, there could be security issues in various use
 cases.
 
 # IANA Considerations
 
 This document has no IANA actions.
-
-
+(Well, actually, TBD1, TBD2, and TBD3 need to be assigned from the DNSSEC DNSKEY Algorithm Table.)
 
 --- back
 
