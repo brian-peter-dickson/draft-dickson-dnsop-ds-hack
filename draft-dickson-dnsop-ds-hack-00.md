@@ -38,7 +38,9 @@ This Internet Draft proposes a mechanism to encode relevant data for NS records,
 
 Since DS records are signed by the parent, this creates a method for validation of the otherwise unsigned delegation and glue records.
 
-This is beneficial if the name server _names_ are in a DNSSEC signed zone.
+Notably, support for updating DS records in a parent zone is already present (by necessity) in the Registry-Registrar-Registrant (RRR) provisioning system, EPP. Thus, no changes to the EPP protocol are needed, and no changes to registry database or publication systems upstream of the DNS zones published by top level domains (TLDs).
+
+This NS validation mechanism is beneficial if the name server _names_ need to be validated prior to use.
 
 {mainmatter}
 
