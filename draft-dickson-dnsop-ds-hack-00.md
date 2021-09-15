@@ -141,7 +141,6 @@ This document has no IANA actions.
 {backmatter}
 
 # Acknowledgments
-{:numbered="false"}
 
 Thanks to everyone who helped create the tools that let everyone use Markdown to create 
 Internet Drafts, and the RFC Editor for xml2rfc.
