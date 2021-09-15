@@ -1,23 +1,24 @@
+
 # Introduction
 
 There are new privacy goals and DNS server capability discovery goals, which cannot be met without the ability to validate the name of the name servers for a given domain at the delegation point.
 
 Specifically, a query for NS records over an unprotected transport path returns results which do not have protection from tampering by an active on-path attacker, or against successful cache poisoning attackes.
 
+If an attacker alters the NS records returned, the recursive resolver could be directed to a server operated by an attacker. The recursive resolver would then leak query information, even if the resolver was using DNSSEC to validate responses from whichever server it got answers from.
+
 This is true regardless of the DNSSEC status of the domain containing the authoritative information for the name servers for the queried domain.
 
-For example, querying for the NS records for "example.com", at the name servers for the "com" TLD, where the published com zone has "example.com NS ns1.example.net", is not protected against MITM attacks, even if the domain "example.net" (the domain serving records for "ns1.example.net") is DNSSEC signed.
+The specific use case is for use of TLS between the recursive resolver and the authoritative server. The resolver has no prior knowledge of the expected identity of the authoritative server except via the delegation response itself. 
 
-More infomation can be found in {{?I-D.nottingham-for-the-users}}. (An exmple
-of an informative reference to a draft in the middle of text. Note that 
-referencing an Internet draft involves replacing "draft-" in the name with 
-"I-D.")
+Validating the RDATA in an delegation response with the name server name is strictly necessary to validate TLS certificate. TLS certificate identities are entirely reliant on the DNS name embedded in the certificate.
+
 
 # Conventions and Definitions
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in BCP 14 {{RFC2119}} {{!RFC8174}}
+document are to be interpreted as described in BCP 14 [@RFC2119] [@!RFC8174]
 when, and only when, they appear in all capitals, as shown here.
 
 # Background
@@ -28,79 +29,74 @@ The result is that the parental side of the zone cut has records needed for DNS 
 
 This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones  regardless of where the transition from secure to insecure occurs.
 
-# New DNSKEY Algorithms {#algorithms}
+## Attack Example
+Suppose a resolver queries for the NS records for "example.com", at the name servers for the "com" TLD.
+Suppose this domain has been published in the com zone as "example.com NS ns1.example.net".
 
-These new DNSKEY algorithms conform to the structure requirements from {{!RFC4034}}, but are not themselves used as actual DNSKEY algorithms. They are assigned values from the DNSKEY algorithm table. No DNSKEY records are published with these algorithms.
+The response is not protected against MITM attacks. An on-path attacker can substitute its own name, "ns1.attacker.example". The resolver would then send its queries to the attacker.
 
-They are used only as the input to the corresponding DS hashes published in the parent zone.
+Note that this vulnerability to MITM is present even if the domain "example.net" (the domain serving records for "ns1.example.net") is DNSSEC signed, and the resolver intends to use TLS to make queries for names within the child zone, "example.com".
+
+Substituting the name server name is sufficient to prevent the resolver from validating the TLS connection. It can validate the received TLS certificate, but would do expect the certificate to be for "ns1.attacker.example". 
+
+# New DNSKEY Algorithm {#algorithm}
+
+This new DNSKEY algorithm conforms to the structure requirements from [@!RFC4034], but is not itself used as actual DNSKEY algorithm. It is assigned a value from the DNSKEY algorithm table. No DNSKEY records are published in the child zone using this algorithm.
+
+This DNSKEY is used only as the input to the corresponding DS hashs published in the parent zone.
 
 ## Algorithm {TBD1}
 
 This algorithm is used to validate the NS records of the delegation for the owner name.
 
-The NS records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}} section 6, including removing any label compression, and normalizing the character cases to lower case. The RDATA fields of the records are concatenated, and the result is hashed using the selected digest algorithm(s), e.g. SHA2-256 for DS digest algorithm 1.
+The NS records are canonicalized according to the DNSSEC signing process [@!RFC4034] section 6, including removing any label compression, and normalizing the character cases to lower case. The RDATA field of the record is hashed using the selected digest algorithm(s), e.g. SHA2-256 for DS digest algorithm 2.
+
+Note that only the RDATA from the original NS record is used in constructing the DS record.
 
 ### Example
 
 Consider the delegation in the COM zone:
-example.com NS ns1.example.net
-example.com NS ns2.example.net
 
-These two records have RDATA, which after canonicalization and sorting, would be
-ns1.example.net
-ns2.example.net
+    example.com NS ns1.Example.Net
+    example.com NS ns2.Example.Net
 
-The input to the digest is the concatenation of those values, i.e. "ns1.example.netns2.example.net".
+These two records have RDATA, which after canonicalization and converting to lower case, would be:
 
-The Key Tag is calculated per {{!RFC4034}} using this value as the RDATA.
+    ns1.example.net
+    ns2.example.net
 
-The resulting DS record is
-; example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
-example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
+The input to the digest for each NS recrod is the corresponding value.
 
+The Key Tag is calculated per [@!RFC4034] using this value as the RDATA.
 
-## Algorithm {TBD2}
+The resulting combination of NS and DS records are:
 
-This algorithm is used to validate the glue A records required as glue for the delegation NS set associated with the owner name.
+    example.com NS ns1.Example.Net
+    example.com NS ns2.Example.Net
+    ; example.com DS KeyTag=FOO Algorithm={TBD1}
+    ;   DigestType=2 Digest=sha2-256(wireformat("ns1.example.net"))
+    example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
+    ; example.com DS KeyTag=FOO Algorithm={TBD1}
+    ;   DigestType=2 Digest=sha2-256(wireformat("ns2.example.net"))
+    example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
 
-The glue A records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
-
-### Example
-
-## Algorithm {TBD3}
-
-This algorithm is used to validate the glue AAAA records required as glue for the delegation NS set associated with the owner name.
-
-The glue AAAA records are canonicalized and sorted according to the DNSSEC signing process {{!RFC4034}}, including removing any label compression, and normalizing the character cases. The entirety of the records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
-
-### Example
 
 # Validation Using These DS Records
 
-These new DS records are used to validate corresponding delegation records and glue, as follows:
-- NS records are validated using {TBD1}
-- Glue A records (if present) are validated using {TBD2}
-- Glue AAAA records (if present) are validated using {TBD3}
+These new DS records are used to validate corresponding delegation records and glue.
+Each record must have a matching DS record. The expected DS record RDATA is constructed, and a matching DS record with identical RDATA MUST be present. Any NS record without matching valid DS record MUST be ignored.
 
-The same method used for constructing the DS records, is used to validate their contents. The algorithm is replicated with the corresponding inputs, and the hash compared to the published DS record(s).
+* NS records are validated using {TBD1}. The RDATA consists of only the RDATA from the NS record.
 
 # Security Considerations
 
-As outlined earlier in {{usecases}}, there could be security issues in various use
+As outlined earlier in FIXME, there could be security issues in various use
 cases.
+
+The target domain containing each name server name is presumed (and required) to be DNSSEC signed. 
 
 # IANA Considerations
 
 This document has no IANA actions.
+(FIXME - update this doc to specify the required IANA actions - add TBD1 to the DNSKEY algorithm table)
 
-
-
---- back
-
-# Acknowledgments
-{:numbered="false"}
-
-Thanks to everyone who helped create the tools that let us use Markdown to create 
-Internet Drafts.
-
-Thanks to Dan York for his Tutorial on using Markdown for writing IETF drafts.
