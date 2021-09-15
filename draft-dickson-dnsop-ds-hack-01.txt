@@ -14,12 +14,11 @@ Expires: 18 March 2022
 Abstract
 
    This Internet Draft proposes a mechanism to encode relevant data for
-   NS records, and when necessary A and AAAA glue data, on the parental
-   side of a zone cut by encoding them in DS records based on new DNSKEY
-   algorithms, one algorithm per encoded RRTYPE.
+   NS records on the parental side of a zone cut by encoding them in DS
+   records based on a new DNSKEY algorithm.
 
    Since DS records are signed by the parent, this creates a method for
-   validation of the otherwise unsigned delegation and glue records.
+   validation of the otherwise unsigned delegation records.
 
    Notably, support for updating DS records in a parent zone is already
    present (by necessity) in the Registry-Registrar-Registrant (RRR)
@@ -47,9 +46,10 @@ Status of This Memo
 
    This Internet-Draft will expire on 18 March 2022.
 
+Copyright Notice
 
-
-
+   Copyright (c) 2021 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
 
 
 
@@ -57,11 +57,6 @@ Dickson                   Expires 18 March 2022                 [Page 1]
 
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
-
-Copyright Notice
-
-   Copyright (c) 2021 IETF Trust and the persons identified as the
-   document authors.  All rights reserved.
 
    This document is subject to BCP 78 and the IETF Trust's Legal
    Provisions Relating to IETF Documents (https://trustee.ietf.org/
@@ -77,20 +72,17 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   3
    3.  Background  . . . . . . . . . . . . . . . . . . . . . . . . .   3
-   4.  New DNSKEY Algorithms . . . . . . . . . . . . . . . . . . . .   3
+     3.1.  Attack Example  . . . . . . . . . . . . . . . . . . . . .   3
+   4.  New DNSKEY Algorithm  . . . . . . . . . . . . . . . . . . . .   4
      4.1.  Algorithm {TBD1}  . . . . . . . . . . . . . . . . . . . .   4
        4.1.1.  Example . . . . . . . . . . . . . . . . . . . . . . .   4
-     4.2.  Algorithm {TBD2}  . . . . . . . . . . . . . . . . . . . .   5
-       4.2.1.  Example . . . . . . . . . . . . . . . . . . . . . . .   5
-     4.3.  Algorithm {TBD3}  . . . . . . . . . . . . . . . . . . . .   5
-       4.3.1.  Example . . . . . . . . . . . . . . . . . . . . . . .   6
-   5.  Validation Using These DS Records . . . . . . . . . . . . . .   6
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
-   8.  Normative References  . . . . . . . . . . . . . . . . . . . .   7
-   9.  Informative References  . . . . . . . . . . . . . . . . . . .   7
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .   7
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   5.  Validation Using These DS Records . . . . . . . . . . . . . .   5
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   8.  Normative References  . . . . . . . . . . . . . . . . . . . .   5
+   9.  Informative References  . . . . . . . . . . . . . . . . . . .   6
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .   6
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   6
 
 1.  Introduction
 
@@ -103,9 +95,17 @@ Table of Contents
    an active on-path attacker, or against successful cache poisoning
    attackes.
 
+   If an attacker alters the NS records returned, the recursive resolver
+   could be directed to a server operated by an attacker.  The recursive
+   resolver would then leak query information, even if the resolver was
+   using DNSSEC to validate responses from whichever server it got
+   answers from.
+
    This is true regardless of the DNSSEC status of the domain containing
    the authoritative information for the name servers for the queried
    domain.
+
+
 
 
 
@@ -114,11 +114,15 @@ Dickson                   Expires 18 March 2022                 [Page 2]
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
 
-   For example, querying for the NS records for "example.com", at the
-   name servers for the "com" TLD, where the published com zone has
-   "example.com NS ns1.example.net", is not protected against MITM
-   attacks, even if the domain "example.net" (the domain serving records
-   for "ns1.example.net") is DNSSEC signed.
+   The specific use case is for use of TLS between the recursive
+   resolver and the authoritative server.  The resolver has no prior
+   knowledge of the expected identity of the authoritative server except
+   via the delegation response itself.
+
+   Validating the RDATA in an delegation response with the name server
+   name is strictly necessary to validate TLS certificate.  TLS
+   certificate identities are entirely reliant on the DNS name embedded
+   in the certificate.
 
 2.  Conventions and Definitions
 
@@ -149,19 +153,15 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
    zones regardless of where the transition from secure to insecure
    occurs.
 
-4.  New DNSKEY Algorithms
+3.1.  Attack Example
 
-   These new DNSKEY algorithms conform to the structure requirements
-   from [RFC4034], but are not themselves used as actual DNSKEY
-   algorithms.  They are assigned values from the DNSKEY algorithm
-   table.  No DNSKEY records are published in the child zone using these
-   algorithms.
+   Suppose a resolver queries for the NS records for "example.com", at
+   the name servers for the "com" TLD.  Suppose this domain has been
+   published in the com zone as "example.com NS ns1.example.net".
 
-   They are used only as the input to the corresponding DS hashes
-   published in the parent zone.
-
-
-
+   The response is not protected against MITM attacks.  An on-path
+   attacker can substitute its own name, "ns1.attacker.example".  The
+   resolver would then send its queries to the attacker.
 
 
 
@@ -169,6 +169,26 @@ Dickson                   Expires 18 March 2022                 [Page 3]
 
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
+
+   Note that this vulnerability to MITM is present even if the domain
+   "example.net" (the domain serving records for "ns1.example.net") is
+   DNSSEC signed, and the resolver intends to use TLS to make queries
+   for names within the child zone, "example.com".
+
+   Substituting the name server name is sufficient to prevent the
+   resolver from validating the TLS connection.  It can validate the
+   received TLS certificate, but would do expect the certificate to be
+   for "ns1.attacker.example".
+
+4.  New DNSKEY Algorithm
+
+   This new DNSKEY algorithm conforms to the structure requirements from
+   [RFC4034], but is not itself used as actual DNSKEY algorithm.  It is
+   assigned a value from the DNSKEY algorithm table.  No DNSKEY records
+   are published in the child zone using this algorithm.
+
+   This DNSKEY is used only as the input to the corresponding DS hashs
+   published in the parent zone.
 
 4.1.  Algorithm {TBD1}
 
@@ -197,6 +217,15 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
    ns1.example.net
    ns2.example.net
 
+
+
+
+
+Dickson                   Expires 18 March 2022                 [Page 4]
+
+Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
+
+
    The input to the digest for each NS recrod is the corresponding
    value.
 
@@ -214,134 +243,29 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
    ;   DigestType=2 Digest=sha2-256(wireformat("ns2.example.net"))
    example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
 
-
-
-
-
-
-
-
-Dickson                   Expires 18 March 2022                 [Page 4]
-
-Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
-
-
-4.2.  Algorithm {TBD2}
-
-   This algorithm is used to validate the glue A records required as
-   glue for the delegation NS set associated with the owner name.  Only
-   "strict" glue for name servers whose name is subordinate to the zone
-   name would be thusly encoded.
-
-   The glue A records are canonicalized according to the DNSSEC signing
-   process [RFC4034], including removing any label compression, and
-   normalizing the character cases.  The owner name and RDATA records
-   are concatenated, and the result is hashed using the selected hash
-   type(s), e.g.  SHA2-256 for DS type 2.
-
-4.2.1.  Example
-
-   Consider the following delegation, where the name server name (RDATA
-   from the NS record) is beneath the zone cut, i.e. subordinate to the
-   domain name (owner name of the NS record):
-
-   example.com NS ns1.example.com
-   example.com NS ns2.example.com
-   ns1.example.com A FIXME_EXAMPLE_IPV4_A_1
-   ns2.example.com A FIXME_EXAMPLE_IPV4_A_2
-
-   The corresponding additional DS records would be:
-
-   ; example.com DS KeyTag=FOO Algorithm={TBD2}
-   ;   DigestType=2 Digest=sha2-256(wireformat("ns1.example.com",
-   ;     FIXME_EXAMPLE_IPV4_A_1))
-   example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
-   ; example.com DS KeyTag=FOO Algorithm={TBD2}
-   ;   DigestType=2 Digest=sha2-256(wireformat("ns2.example.com",
-   ;     FIXME_EXAMPLE_IPV4_A_2))
-   example.com DS KeyTag=FOO Algorithm={TBD2} DigestType=2 Digest=...
-
-4.3.  Algorithm {TBD3}
-
-   This algorithm is used to validate the glue AAAA records required as
-   glue for the delegation NS set associated with the owner name.  Only
-   "strict" glue for name servers whose name is subordinate to the zone
-   name would be thusly encoded.
-
-   The glue AAAA records are canonicalized according to the DNSSEC
-   signing process [RFC4034], including removing any label compression,
-   and normalizing the character cases.  The owner name and RDATA
-   records are concatenated, and the result is hashed using the selected
-   hash type(s), e.g.  SHA2-256 for DS type 2.
-
-
-
-
-Dickson                   Expires 18 March 2022                 [Page 5]
-
-Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
-
-
-4.3.1.  Example
-
-   Consider the following delegation, where the name server name (RDATA
-   from the NS record) is beneath the zone cut, i.e. subordinate to the
-   domain name (owner name of the NS record):
-
-   example.com NS ns1.example.com
-   example.com NS ns2.example.com
-   ns1.example.com AAAA FIXME_EXAMPLE_IPV4_AAAA_1
-   ns2.example.com AAAA FIXME_EXAMPLE_IPV4_AAAA_2
-
-   The corresponding additional DS records would be:
-
-   ; example.com DS KeyTag=FOO Algorithm={TBD3}
-   ;   DigestType=2 Digest=sha2-256(wireformat("ns1.example.com",
-   ;     FIXME_EXAMPLE_IPV4_AAAA_1))
-   example.com DS KeyTag=FOO Algorithm={TBD3} DigestType=2 Digest=...
-   ; example.com DS KeyTag=FOO Algorithm={TBD3}
-   ;   DigestType=2 Digest=sha2-256(wireformat("ns2.example.com",
-   ;     FIXME_EXAMPLE_IPV4_AAAA_2))
-   example.com DS KeyTag=FOO Algorithm={TBD3} DigestType=2 Digest=...
-
 5.  Validation Using These DS Records
 
    These new DS records are used to validate corresponding delegation
    records and glue.  Each record must have a matching DS record.  The
    expected DS record RDATA is constructed, and a matching DS record
-   with identical RDATA MUST be present or validation fails.
+   with identical RDATA MUST be present.  Any NS record without matching
+   valid DS record MUST be ignored.
 
    *  NS records are validated using {TBD1}. The RDATA consists of only
       the RDATA from the NS record.
-
-   *  Glue A records (if present) are validated using {TBD2}. The RDATA
-      consists of the owner name of the A record plus the RDATA from the
-      A record.
-
-   *  Glue AAAA records (if present) are validated using {TBD3}. The
-      RDATA consists of the owner name of the A record plus the RDATA
-      from the AAAA record.
 
 6.  Security Considerations
 
    As outlined earlier in FIXME, there could be security issues in
    various use cases.
 
-
-
-
-
-
-
-Dickson                   Expires 18 March 2022                 [Page 6]
-
-Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
-
+   The target domain containing each name server name is presumed (and
+   required) to be DNSSEC signed.
 
 7.  IANA Considerations
 
-   This document has no IANA actions.  (FIXME - update to list the
-   required IANA actions - add TBD1, TBD2, TBD3 to the DNSKEY algorithm
+   This document has no IANA actions.  (FIXME - update this doc to
+   specify the required IANA actions - add TBD1 to the DNSKEY algorithm
    table)
 
 8.  Normative References
@@ -350,6 +274,13 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
               Rose, "Resource Records for the DNS Security Extensions",
               RFC 4034, DOI 10.17487/RFC4034, March 2005,
               <https://www.rfc-editor.org/info/rfc4034>.
+
+
+
+Dickson                   Expires 18 March 2022                 [Page 5]
+
+Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
+
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -389,4 +320,17 @@ Author's Address
 
 
 
-Dickson                   Expires 18 March 2022                 [Page 7]
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dickson                   Expires 18 March 2022                 [Page 6]
