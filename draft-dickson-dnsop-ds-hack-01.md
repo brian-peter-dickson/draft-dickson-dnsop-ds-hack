@@ -34,9 +34,9 @@ organization = "GoDaddy"
 
 .# Abstract
 
-This Internet Draft proposes a mechanism to encode relevant data for NS records, and when necessary A and AAAA glue data, on the parental side of a zone cut by encoding them in DS records based on new DNSKEY algorithms, one algorithm per encoded RRTYPE.
+This Internet Draft proposes a mechanism to encode relevant data for NS records on the parental side of a zone cut by encoding them in DS records based on a new DNSKEY algorithm.
 
-Since DS records are signed by the parent, this creates a method for validation of the otherwise unsigned delegation and glue records.
+Since DS records are signed by the parent, this creates a method for validation of the otherwise unsigned delegation records.
 
 Notably, support for updating DS records in a parent zone is already present (by necessity) in the Registry-Registrar-Registrant (RRR) provisioning system, EPP. Thus, no changes to the EPP protocol are needed, and no changes to registry database or publication systems upstream of the DNS zones published by top level domains (TLDs).
 
@@ -50,9 +50,14 @@ There are new privacy goals and DNS server capability discovery goals, which can
 
 Specifically, a query for NS records over an unprotected transport path returns results which do not have protection from tampering by an active on-path attacker, or against successful cache poisoning attackes.
 
+If an attacker alters the NS records returned, the recursive resolver could be directed to a server operated by an attacker. The recursive resolver would then leak query information, even if the resolver was using DNSSEC to validate responses from whichever server it got answers from.
+
 This is true regardless of the DNSSEC status of the domain containing the authoritative information for the name servers for the queried domain.
 
-For example, querying for the NS records for "example.com", at the name servers for the "com" TLD, where the published com zone has "example.com NS ns1.example.net", is not protected against MITM attacks, even if the domain "example.net" (the domain serving records for "ns1.example.net") is DNSSEC signed.
+The specific use case is for use of TLS between the recursive resolver and the authoritative server. The resolver has no prior knowledge of the expected identity of the authoritative server except via the delegation response itself. 
+
+Validating the RDATA in an delegation response with the name server name is strictly necessary to validate TLS certificate. TLS certificate identities are entirely reliant on the DNS name embedded in the certificate.
+
 
 # Conventions and Definitions
 
@@ -69,11 +74,21 @@ The result is that the parental side of the zone cut has records needed for DNS 
 
 This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones  regardless of where the transition from secure to insecure occurs.
 
-# New DNSKEY Algorithms {#algorithms}
+## Attack Example
+Suppose a resolver queries for the NS records for "example.com", at the name servers for the "com" TLD.
+Suppose this domain has been published in the com zone as "example.com NS ns1.example.net".
 
-These new DNSKEY algorithms conform to the structure requirements from [@!RFC4034], but are not themselves used as actual DNSKEY algorithms. They are assigned values from the DNSKEY algorithm table. No DNSKEY records are published in the child zone using these algorithms.
+The response is not protected against MITM attacks. An on-path attacker can substitute its own name, "ns1.attacker.example". The resolver would then send its queries to the attacker.
 
-They are used only as the input to the corresponding DS hashes published in the parent zone.
+Note that this vulnerability to MITM is present even if the domain "example.net" (the domain serving records for "ns1.example.net") is DNSSEC signed, and the resolver intends to use TLS to make queries for names within the child zone, "example.com".
+
+Substituting the name server name is sufficient to prevent the resolver from validating the TLS connection. It can validate the received TLS certificate, but would do expect the certificate to be for "ns1.attacker.example". 
+
+# New DNSKEY Algorithm {#algorithm}
+
+This new DNSKEY algorithm conforms to the structure requirements from [@!RFC4034], but is not itself used as actual DNSKEY algorithm. It is assigned a value from the DNSKEY algorithm table. No DNSKEY records are published in the child zone using this algorithm.
+
+This DNSKEY is used only as the input to the corresponding DS hashs published in the parent zone.
 
 ## Algorithm {TBD1}
 
@@ -111,74 +126,24 @@ The resulting combination of NS and DS records are:
     example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
 
 
-## Algorithm {TBD2}
-
-This algorithm is used to validate the glue A records required as glue for the delegation NS set associated with the owner name. Only "strict" glue for name servers whose name is subordinate to the zone name would be thusly encoded.
-
-The glue A records are canonicalized according to the DNSSEC signing process [@!RFC4034], including removing any label compression, and normalizing the character cases. The owner name and RDATA records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
-
-### Example
-Consider the following delegation, where the name server name (RDATA from the NS record) is beneath the zone cut, i.e. subordinate to the domain name (owner name of the NS record):
-
-    example.com NS ns1.example.com
-    example.com NS ns2.example.com
-    ns1.example.com A FIXME_EXAMPLE_IPV4_A_1
-    ns2.example.com A FIXME_EXAMPLE_IPV4_A_2
-
-The corresponding additional DS records would be:
-
-    ; example.com DS KeyTag=FOO Algorithm={TBD2}
-    ;   DigestType=2 Digest=sha2-256(wireformat("ns1.example.com",
-    ;     FIXME_EXAMPLE_IPV4_A_1))
-    example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
-    ; example.com DS KeyTag=FOO Algorithm={TBD2}
-    ;   DigestType=2 Digest=sha2-256(wireformat("ns2.example.com", 
-    ;     FIXME_EXAMPLE_IPV4_A_2))
-    example.com DS KeyTag=FOO Algorithm={TBD2} DigestType=2 Digest=...
-
-## Algorithm {TBD3}
-
-This algorithm is used to validate the glue AAAA records required as glue for the delegation NS set associated with the owner name. Only "strict" glue for name servers whose name is subordinate to the zone name would be thusly encoded.
-
-The glue AAAA records are canonicalized according to the DNSSEC signing process [@!RFC4034], including removing any label compression, and normalizing the character cases. The owner name and RDATA records are concatenated, and the result is hashed using the selected hash type(s), e.g. SHA2-256 for DS type 2.
-
-### Example
-Consider the following delegation, where the name server name (RDATA from the NS record) is beneath the zone cut, i.e. subordinate to the domain name (owner name of the NS record):
-
-    example.com NS ns1.example.com
-    example.com NS ns2.example.com
-    ns1.example.com AAAA FIXME_EXAMPLE_IPV4_AAAA_1
-    ns2.example.com AAAA FIXME_EXAMPLE_IPV4_AAAA_2
-
-The corresponding additional DS records would be:
-
-    ; example.com DS KeyTag=FOO Algorithm={TBD3}
-    ;   DigestType=2 Digest=sha2-256(wireformat("ns1.example.com", 
-    ;     FIXME_EXAMPLE_IPV4_AAAA_1))
-    example.com DS KeyTag=FOO Algorithm={TBD3} DigestType=2 Digest=...
-    ; example.com DS KeyTag=FOO Algorithm={TBD3}
-    ;   DigestType=2 Digest=sha2-256(wireformat("ns2.example.com", 
-    ;     FIXME_EXAMPLE_IPV4_AAAA_2))
-    example.com DS KeyTag=FOO Algorithm={TBD3} DigestType=2 Digest=...
-
 # Validation Using These DS Records
 
 These new DS records are used to validate corresponding delegation records and glue.
-Each record must have a matching DS record. The expected DS record RDATA is constructed, and a matching DS record with identical RDATA MUST be present or validation fails.
+Each record must have a matching DS record. The expected DS record RDATA is constructed, and a matching DS record with identical RDATA MUST be present. Any NS record without matching valid DS record MUST be ignored.
 
 * NS records are validated using {TBD1}. The RDATA consists of only the RDATA from the NS record.
-* Glue A records (if present) are validated using {TBD2}. The RDATA consists of the owner name of the A record plus the RDATA from the A record.
-* Glue AAAA records (if present) are validated using {TBD3}. The RDATA consists of the owner name of the A record plus the RDATA from the AAAA record.
 
 # Security Considerations
 
 As outlined earlier in FIXME, there could be security issues in various use
 cases.
 
+The target domain containing each name server name is presumed (and required) to be DNSSEC signed. 
+
 # IANA Considerations
 
 This document has no IANA actions.
-(FIXME - update to list the required IANA actions - add TBD1, TBD2, TBD3 to the DNSKEY algorithm table)
+(FIXME - update this doc to specify the required IANA actions - add TBD1 to the DNSKEY algorithm table)
 
 {backmatter}
 
