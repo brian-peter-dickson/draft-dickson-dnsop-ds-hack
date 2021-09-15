@@ -97,8 +97,9 @@ The Key Tag is calculated per [@!RFC4034] using this value as the RDATA.
 
 The resulting DS record is:
 
-    ; example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
-    example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
+    ; example.com DS KeyTag=FOO Algorithm={TBD1}
+    ;   DigestType=2 Digest=sha2-256("ns1.example.netns2.example.net")
+    example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
 
 
 ## Algorithm {TBD2}
