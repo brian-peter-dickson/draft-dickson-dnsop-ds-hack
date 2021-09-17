@@ -4,8 +4,8 @@
 
 Network Working Group                                         B. Dickson
 Internet-Draft                                                   GoDaddy
-Intended status: Informational                         14 September 2021
-Expires: 18 March 2022
+Intended status: Informational                         17 September 2021
+Expires: 21 March 2022
 
 
                  DS Algorithms for Securing NS and Glue
@@ -44,7 +44,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 18 March 2022.
+   This Internet-Draft will expire on 21 March 2022.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Dickson                   Expires 18 March 2022                 [Page 1]
+Dickson                   Expires 21 March 2022                 [Page 1]
 
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
@@ -77,10 +77,11 @@ Table of Contents
      4.1.  Algorithm {TBD1}  . . . . . . . . . . . . . . . . . . . .   4
        4.1.1.  Example . . . . . . . . . . . . . . . . . . . . . . .   4
    5.  Validation Using These DS Records . . . . . . . . . . . . . .   5
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
-   8.  Normative References  . . . . . . . . . . . . . . . . . . . .   5
-   9.  Informative References  . . . . . . . . . . . . . . . . . . .   6
+   6.  Protection of glue records  . . . . . . . . . . . . . . . . .   5
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   9.  Normative References  . . . . . . . . . . . . . . . . . . . .   5
+   10. Informative References  . . . . . . . . . . . . . . . . . . .   6
    Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .   6
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   6
 
@@ -108,8 +109,7 @@ Table of Contents
 
 
 
-
-Dickson                   Expires 18 March 2022                 [Page 2]
+Dickson                   Expires 21 March 2022                 [Page 2]
 
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
@@ -165,7 +165,7 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
 
 
-Dickson                   Expires 18 March 2022                 [Page 3]
+Dickson                   Expires 21 March 2022                 [Page 3]
 
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
@@ -221,7 +221,7 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
 
 
-Dickson                   Expires 18 March 2022                 [Page 4]
+Dickson                   Expires 21 March 2022                 [Page 4]
 
 Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
 
@@ -254,7 +254,12 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
    *  NS records are validated using {TBD1}. The RDATA consists of only
       the RDATA from the NS record.
 
-6.  Security Considerations
+6.  Protection of glue records
+
+   For the issue of glue records (parental side A/AAAA records which are
+   not signed), please see the proposal [I-D.dickson-dnsop-glueless].
+
+7.  Security Considerations
 
    As outlined earlier in FIXME, there could be security issues in
    various use cases.
@@ -262,31 +267,38 @@ Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
    The target domain containing each name server name is presumed (and
    required) to be DNSSEC signed.
 
-7.  IANA Considerations
+8.  IANA Considerations
 
    This document has no IANA actions.  (FIXME - update this doc to
    specify the required IANA actions - add TBD1 to the DNSKEY algorithm
    table)
 
-8.  Normative References
+9.  Normative References
+
+
+
+Dickson                   Expires 21 March 2022                 [Page 5]
+
+Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
+
 
    [RFC4034]  Arends, R., Austein, R., Larson, M., Massey, D., and S.
               Rose, "Resource Records for the DNS Security Extensions",
               RFC 4034, DOI 10.17487/RFC4034, March 2005,
               <https://www.rfc-editor.org/info/rfc4034>.
 
-
-
-Dickson                   Expires 18 March 2022                 [Page 5]
-
-Internet-Draft   DS Algorithms for Securing NS and Glue   September 2021
-
-
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
-9.  Informative References
+10.  Informative References
+
+   [I-D.dickson-dnsop-glueless]
+              Dickson, B., "Operating a Glueless DNS Authority Server",
+              Work in Progress, Internet-Draft, draft-dickson-dnsop-
+              glueless-00, 17 September 2021,
+              <https://datatracker.ietf.org/doc/html/draft-dickson-
+              dnsop-glueless-00>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -321,16 +333,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Dickson                   Expires 18 March 2022                 [Page 6]
+Dickson                   Expires 21 March 2022                 [Page 6]
