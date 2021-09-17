@@ -88,6 +88,10 @@ Each record must have a matching DS record. The expected DS record RDATA is cons
 
 * NS records are validated using {TBD1}. The RDATA consists of only the RDATA from the NS record.
 
+# Protection of glue records
+
+For the issue of glue records (parental side A/AAAA records which are not signed), please see the proposal [@I-D.dickson-dnsop-glueless].
+
 # Security Considerations
 
 As outlined earlier in FIXME, there could be security issues in various use
