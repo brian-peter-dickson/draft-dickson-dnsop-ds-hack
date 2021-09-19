@@ -1,17 +1,17 @@
 
 # Introduction
 
-There are new privacy goals and DNS server capability discovery goals, which cannot be met without the ability to validate the name of the name servers for a given domain at the delegation point.
 
-Specifically, a query for NS records over an unprotected transport path returns results which do not have protection from tampering by an active on-path attacker, or against successful cache poisoning attackes.
+Currently, any query for delegation NS records over an unprotected transport path returns results which do not have protection from tampering by an active on-path attacker, or against successful cache poisoning attackes. This is because the parent NS records are being authoritative, and thus do not have RRSIGs. The child NS records with the same owner name are authoritave, but the parent NS records are what get used for delegations.
 
-If an attacker alters the NS records returned, the recursive resolver could be directed to a server operated by an attacker. The recursive resolver would then leak query information, even if the resolver was using DNSSEC to validate responses from whichever server it got answers from.
+There is new privacy work that relies on the name server names in the delgation RDATA. Unsigned records are vulnerable to modification by on-path attackers and to cache poisoning by off-path attackers.
+That privacy work uses the name for TLS validation, and the only source of the name server name is the NS record in the delgation.
 
-This is true regardless of the DNSSEC status of the domain containing the authoritative information for the name servers for the queried domain.
+This document is about protecting the RDATA of NS record, not the privacy issues per se.
 
-The specific use case is for use of TLS between the recursive resolver and the authoritative server. The resolver has no prior knowledge of the expected identity of the authoritative server except via the delegation response itself. 
+Note that the use of an encrypted trasport (such as DoT [@RFC7858] to the parent would be an alternative approach, but in the absence of encrypted transport, the current approach is recommended.
 
-Validating the RDATA in an delegation response with the name server name is strictly necessary to validate TLS certificate. TLS certificate identities are entirely reliant on the DNS name embedded in the certificate.
+If an attacker alters the NS records returned, or poisons the resolver's cache for the unsigned delegation NS, the recursive resolver could be directed to a server operated by an attacker.
 
 
 # Conventions and Definitions
@@ -25,9 +25,9 @@ when, and only when, they appear in all capitals, as shown here.
 
 The methods developed for adding security to the Domain Name System, collectively refered to as DNSSEC, had as a primary requirement that they be backward compatible. The original specifications for DNS used the same Resourc Record Type (RRTYPE) on both the parent and child side of a zone cut (the NS record). The main goal of DNSSEC was to ensure data integrity by using cryptographic signatures. However, owing to this overlap in the NS record type  where the records above and below the zone cut have the same owner name  created an inherent conflict, as only the child zone is authoritative for these records.
 
-The result is that the parental side of the zone cut has records needed for DNS resolution  which are not signed  and not validatable.
+The result is that the parent side of the zone cut has records needed for DNS resolution  which are not signed  and not validatable.
 
-This has no impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones  regardless of where the transition from secure to insecure occurs.
+This has no security (data validation) impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones regardless of where the transition from secure to insecure occurs.
 
 ## Attack Example
 Suppose a resolver queries for the NS records for "example.com", at the name servers for the "com" TLD.
@@ -45,13 +45,15 @@ This new DNSKEY algorithm conforms to the structure requirements from [@!RFC4034
 
 This DNSKEY is used only as the input to the corresponding DS hashs published in the parent zone.
 
+Note that this method is orthogonal to the specific choice of DS hashes. Examples here refer to the what is published currently in the IANA tables for recommended DNSSEC parameters, including recommended choices. Any valid supported hash for DS records MAY be used.
+
 ## Algorithm {TBD1}
 
 This algorithm is used to validate the NS records of the delegation for the owner name.
 
-The NS records are canonicalized according to the DNSSEC signing process [@!RFC4034] section 6, including removing any label compression, and normalizing the character cases to lower case. The RDATA field of the record is hashed using the selected digest algorithm(s), e.g. SHA2-256 for DS digest algorithm 2.
+The original NS records are canonicalized according to the DNSSEC signing process [@!RFC4034] section 6, including removing any label compression, and normalizing the character cases to lower case. The RDATA field of the record is hashed using the selected digest algorithm(s), e.g. SHA2-256 for DS digest algorithm 2.
 
-Note that only the RDATA from the original NS record is used in constructing the DS record.
+Note that only the RDATA from the wire format of the original NS record is used in constructing the DS record.
 
 ### Example
 
@@ -60,12 +62,7 @@ Consider the delegation in the COM zone:
     example.com NS ns1.Example.Net
     example.com NS ns2.Example.Net
 
-These two records have RDATA, which after canonicalization and converting to lower case, would be:
-
-    ns1.example.net
-    ns2.example.net
-
-The input to the digest for each NS recrod is the corresponding value.
+The input to the digest for each NS record is the uncompressed wire format of their respective RVALUEs.
 
 The Key Tag is calculated per [@!RFC4034] using this value as the RDATA.
 
@@ -84,13 +81,13 @@ The resulting combination of NS and DS records are:
 # Validation Using These DS Records
 
 These new DS records are used to validate corresponding delegation records and glue.
-Each record must have a matching DS record. The expected DS record RDATA is constructed, and a matching DS record with identical RDATA MUST be present. Any NS record without matching valid DS record MUST be ignored.
+Each NS record must have a matching DS record. The expected DS record RDATA is constructed, and a matching DS record with identical RDATA MUST be present. Any NS record without matching valid DS record MUST be ignored.
 
 * NS records are validated using {TBD1}. The RDATA consists of only the RDATA from the NS record.
 
 # Protection of glue records
 
-For the issue of glue records (parental side A/AAAA records which are not signed), please see the proposal [@I-D.dickson-dnsop-glueless].
+For the issue of glue records (parent side A/AAAA records which are not signed), please see the proposal [@I-D.dickson-dnsop-glueless].
 
 # Security Considerations
 
