@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- name="GENERATOR" content="github.com/mmarkdown/mmark Mmark Markdown Processor - mmark.miek.nl" -->
+<rfc version="3" ipr="trust200902" docName="draft-dickson-dnsop-ds-hack-02" submissionType="IETF" category="info" xml:lang="en" xmlns:xi="http://www.w3.org/2001/XInclude" indexInclude="false" consensus="true">
+
+<front>
+<title abbrev="DS Algorithms for Securing NS and Glue">DS Algorithms for Securing NS and Glue</title><seriesInfo value="draft-dickson-dnsop-ds-hack-02" stream="IETF" status="informational" name="Internet-Draft"></seriesInfo>
+<author initials="B." surname="Dickson" fullname="Brian Dickson"><organization>GoDaddy</organization><address><postal><street></street>
+</postal><email>brian.peter.dickson@gmail.com</email>
+</address></author><date/>
+<area>Internet</area>
+<workgroup></workgroup>
+
+<abstract>
+<t>This document specifies a mechanism to encode relevant data for NS records on the parental side of a zone cut by encoding them in DS records based on a new DNSKEY algorithm.</t>
+<t>Since DS records are signed by the parent, this creates a method for validation of the otherwise unsigned delegation records.</t>
+<t>Notably, support for updating DS records in a parent zone is already present (by necessity) in the Registry-Registrar-Registrant (RRR) provisioning system, EPP. Thus, no changes to the EPP protocol are needed, and no changes to registry database or publication systems upstream of the DNS zones published by top level domains (TLDs).</t>
+<t>This NS validation mechanism is beneficial if the name server <em>names</em> need to be validated prior to use.</t>
+</abstract>
+
+</front>
+
+<middle>
+
+<section anchor="introduction"><name>Introduction</name>
+<t>Currently, any query for delegation NS records over an unprotected transport path returns results which do not have protection from tampering by an active on-path attacker, or against successful cache poisoning attackes. This is because the parent NS records are being authoritative, and thus do not have RRSIGs. The child NS records with the same owner name are authoritave, but the parent NS records are what get used for delegations.</t>
+<t>There is new privacy work that relies on the name server names in the delgation RDATA. Unsigned records are vulnerable to modification by on-path attackers and to cache poisoning by off-path attackers.
+That privacy work uses the name for TLS validation, and the only source of the name server name is the NS record in the delgation.</t>
+<t>This document is about protecting the RDATA of NS record, not the privacy issues per se.</t>
+<t>Note that the use of an encrypted trasport (such as DoT <xref target="RFC7858"></xref> to the parent would be an alternative approach, but in the absence of encrypted transport, the current approach is recommended.</t>
+<t>If an attacker alters the NS records returned, or poisons the resolver's cache for the unsigned delegation NS, the recursive resolver could be directed to a server operated by an attacker.</t>
+</section>
+
+<section anchor="conventions-and-definitions"><name>Conventions and Definitions</name>
+<t>The key words &quot;MUST&quot;, &quot;MUST NOT&quot;, &quot;REQUIRED&quot;, &quot;SHALL&quot;, &quot;SHALL NOT&quot;, &quot;SHOULD&quot;,
+&quot;SHOULD NOT&quot;, &quot;RECOMMENDED&quot;, &quot;NOT RECOMMENDED&quot;, &quot;MAY&quot;, and &quot;OPTIONAL&quot; in this
+document are to be interpreted as described in BCP 14 <xref target="RFC2119"></xref> <xref target="RFC8174"></xref>
+when, and only when, they appear in all capitals, as shown here.</t>
+</section>
+
+<section anchor="background"><name>Background</name>
+<t>The methods developed for adding security to the Domain Name System, collectively refered to as DNSSEC, had as a primary requirement that they be backward compatible. The original specifications for DNS used the same Resourc Record Type (RRTYPE) on both the parent and child side of a zone cut (the NS record). The main goal of DNSSEC was to ensure data integrity by using cryptographic signatures. However, owing to this overlap in the NS record type  where the records above and below the zone cut have the same owner name  created an inherent conflict, as only the child zone is authoritative for these records.</t>
+<t>The result is that the parent side of the zone cut has records needed for DNS resolution  which are not signed  and not validatable.</t>
+<t>This has no security (data validation) impact on DNS zones which are fully DNSSEC signed (anchored at the IANA DNS Trust Anchor), but does impact unsigned zones regardless of where the transition from secure to insecure occurs.</t>
+
+<section anchor="attack-example"><name>Attack Example</name>
+<t>Suppose a resolver queries for the NS records for &quot;example.com&quot;, at the name servers for the &quot;com&quot; TLD.
+Suppose this domain has been published in the com zone as &quot;example.com NS ns1.example.net&quot;.</t>
+<t>The response is not protected against MITM attacks. An on-path attacker can substitute its own name, &quot;ns1.attacker.example&quot;. The resolver would then send its queries to the attacker.</t>
+<t>Note that this vulnerability to MITM is present even if the domain &quot;example.net&quot; (the domain serving records for &quot;ns1.example.net&quot;) is DNSSEC signed, and the resolver intends to use TLS to make queries for names within the child zone, &quot;example.com&quot;.</t>
+<t>Substituting the name server name is sufficient to prevent the resolver from validating the TLS connection. It can validate the received TLS certificate, but would do expect the certificate to be for &quot;ns1.attacker.example&quot;.</t>
+</section>
+</section>
+
+<section anchor="algorithm"><name>New DNSKEY Algorithm</name>
+<t>This new DNSKEY algorithm conforms to the structure requirements from <xref target="RFC4034"></xref>, but is not itself used as actual DNSKEY algorithm. It is assigned a value from the DNSKEY algorithm table. No DNSKEY records are published in the child zone using this algorithm.</t>
+<t>This DNSKEY is used only as the input to the corresponding DS hashs published in the parent zone.</t>
+<t>Note that this method is orthogonal to the specific choice of DS hashes. Examples here refer to the what is published currently in the IANA tables for recommended DNSSEC parameters, including recommended choices. Any valid supported hash for DS records MAY be used.</t>
+
+<section anchor="algorithm-tbd1"><name>Algorithm {TBD1}</name>
+<t>This algorithm is used to validate the NS records of the delegation for the owner name.</t>
+<t>The original NS records are canonicalized according to the DNSSEC signing process <xref target="RFC4034"></xref> section 6, including removing any label compression, and normalizing the character cases to lower case. The RDATA field of the record is hashed using the selected digest algorithm(s), e.g. SHA2-256 for DS digest algorithm 2.</t>
+<t>Note that only the RDATA from the wire format of the original NS record is used in constructing the DS record.</t>
+
+<section anchor="example"><name>Example</name>
+<t>Consider the delegation in the COM zone:</t>
+
+<artwork>example.com NS ns1.Example.Net
+example.com NS ns2.Example.Net
+</artwork>
+<t>The input to the digest for each NS record is the uncompressed wire format of their respective RVALUEs.</t>
+<t>The Key Tag is calculated per <xref target="RFC4034"></xref> using this value as the RDATA.</t>
+<t>The resulting combination of NS and DS records are:</t>
+
+<artwork>example.com NS ns1.Example.Net
+example.com NS ns2.Example.Net
+; example.com DS KeyTag=FOO Algorithm={TBD1}
+;   DigestType=2 Digest=sha2-256(wireformat(&quot;ns1.example.net&quot;))
+example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
+; example.com DS KeyTag=FOO Algorithm={TBD1}
+;   DigestType=2 Digest=sha2-256(wireformat(&quot;ns2.example.net&quot;))
+example.com DS KeyTag=FOO Algorithm={TBD1} DigestType=2 Digest=...
+</artwork>
+</section>
+</section>
+</section>
+
+<section anchor="validation-using-these-ds-records"><name>Validation Using These DS Records</name>
+<t>These new DS records are used to validate corresponding delegation records and glue.
+Each NS record must have a matching DS record. The expected DS record RDATA is constructed, and a matching DS record with identical RDATA MUST be present. Any NS record without matching valid DS record MUST be ignored.</t>
+
+<ul>
+<li>NS records are validated using {TBD1}. The RDATA consists of only the RDATA from the NS record.</li>
+</ul>
+</section>
+
+<section anchor="protection-of-glue-records"><name>Protection of glue records</name>
+<t>For the issue of glue records (parent side A/AAAA records which are not signed), please see the proposal <xref target="I-D.dickson-dnsop-glueless"></xref>.</t>
+</section>
+
+<section anchor="security-considerations"><name>Security Considerations</name>
+<t>As outlined earlier in FIXME, there could be security issues in various use
+cases.</t>
+<t>The target domain containing each name server name is presumed (and required) to be DNSSEC signed.</t>
+</section>
+
+<section anchor="iana-considerations"><name>IANA Considerations</name>
+<t>This document has no IANA actions.
+(FIXME - update this doc to specify the required IANA actions - add TBD1 to the DNSKEY algorithm table)</t>
+</section>
+
+</middle>
+
+<back>
+<references><name>Normative References</name>
+<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.4034.xml"/>
+<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+</references>
+<references><name>Informative References</name>
+<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml-ids/reference.I-D.dickson-dnsop-glueless.xml"/>
+<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7858.xml"/>
+</references>
+
+<section anchor="acknowledgments"><name>Acknowledgments</name>
+<t>Thanks to everyone who helped create the tools that let everyone use Markdown to create
+Internet Drafts, and the RFC Editor for xml2rfc.</t>
+<t>Thanks to Dan York for his Tutorial on using Markdown (specifically mmark) for writing IETF drafts.</t>
+<t>Thanks to YOUR NAME HERE for contributions, reviews, etc.</t>
+</section>
+
+</back>
+
+</rfc>
